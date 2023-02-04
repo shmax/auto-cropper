@@ -1,8 +1,12 @@
 import numpy as np
 import imageio.v3 as iio
 import math
+import logging
 from PIL import Image as img, ImageDraw
+from timer import timer, get_timer
 
+
+logging.basicConfig(level=logging.DEBUG)
 
 class Extents:
     _left = None
@@ -46,68 +50,71 @@ class Extents:
     def width(self):
         return self._right - self._left
 
+
 def imageLightnessAt(rgb):
-    (r,g,b) = rgb
+    (r, g, b) = rgb
     m = min(r, g, b)
     n = max(r, g, b)
     lightness = (int(m) + n) / 510.0
     return lightness
 
-def darkEnough( rgb, x, y, tolerance ):
-    # if rgb == 0xffffff:
-    #     return False
+
+def darkEnough(rgb, x, y, tolerance):
+    if rgb[0] == 255 and rgb[1] == 255 and rgb[2] == 255:
+        return False
 
     if imageLightnessAt(rgb) < tolerance:
-             return True
+        return True
 
     return False
 
+
 def find_top_edge(img, left, top, right, bottom, step, tolerance):
-        for y in range(top, bottom, step):
-            for x in range(left, right, step):
-                rgb = img.getpixel((x,y));
-                if darkEnough(rgb, x, y, tolerance ):
-                    if step > 1:
-                        try:
-                            return find_top_edge(img,
-                                max(0, x - step),
-                                max(0, y - step),
-                                x,
-                                y,
-                                1,
-                                tolerance)
-                        except Exception:
-                            return [x, y]
-                    return [x,y]
-
-        if step > 1:
-            return find_top_edge(
-                img,
-                left,
-                top,
-                right,
-                bottom,
-                1,
-                tolerance
-            )
-
-        raise Exception("Didn't find any non-white pixels")
-
-
-def find_left_edge(img, left, top, right, bottom, step, tolerance):
-    for x in range(left, right, step):
-        for y in range(top, bottom, step):
-            rgb = img.getpixel((x,y))
+    for y in range(top, bottom, step):
+        for x in range(left, right, step):
+            rgb = img.getpixel((x, y));
             if darkEnough(rgb, x, y, tolerance):
                 if step > 1:
                     try:
-                        return find_left_edge(img,
+                        return find_top_edge(img,
                                              max(0, x - step),
                                              max(0, y - step),
                                              x,
                                              y,
                                              1,
                                              tolerance)
+                    except Exception:
+                        return [x, y]
+                return [x, y]
+
+    if step > 1:
+        return find_top_edge(
+            img,
+            left,
+            top,
+            right,
+            bottom,
+            1,
+            tolerance
+        )
+
+    raise Exception("Didn't find any non-white pixels")
+
+
+def find_left_edge(img, left, top, right, bottom, step, tolerance):
+    for x in range(left, right, step):
+        for y in range(top, bottom, step):
+            rgb = img.getpixel((x, y))
+            if darkEnough(rgb, x, y, tolerance):
+                if step > 1:
+                    try:
+                        return find_left_edge(img,
+                                              max(0, x - step),
+                                              max(0, y - step),
+                                              x,
+                                              y,
+                                              1,
+                                              tolerance)
                     except Exception:
                         return [x, y]
                 return [x, y]
@@ -129,17 +136,17 @@ def find_left_edge(img, left, top, right, bottom, step, tolerance):
 def find_right_edge(img, left, top, right, bottom, step, tolerance):
     for x in range(right - 1, left, -step):
         for y in range(top, bottom, step):
-            rgb = img.getpixel((x,y))
+            rgb = img.getpixel((x, y))
             if darkEnough(rgb, x, y, tolerance):
                 if step > 1:
                     try:
                         return find_right_edge(img,
-                                                max(0, x + step),
-                                                max(0, y - step),
-                                                x,
-                                                y,
-                                                1,
-                                                tolerance)
+                                               max(0, x + step),
+                                               max(0, y - step),
+                                               x,
+                                               y,
+                                               1,
+                                               tolerance)
                     except Exception:
                         return [x, y]
                 return [x, y]
@@ -157,37 +164,39 @@ def find_right_edge(img, left, top, right, bottom, step, tolerance):
 
     raise Exception("Didn't find any non-white pixels")
 
+
 def find_bottom_edge(img, left, top, right, bottom, step, tolerance):
-        for y in range(bottom - 1, top, -step):
-            for x in range(left, right, step):
-                rgb = img.getpixel((x,y))
-                if darkEnough(rgb, x, y, tolerance ):
-                    if step > 1:
-                        try:
-                            return find_bottom_edge(img,
-                                max(0, x - step),
-                                max(0, y - step),
-                                x,
-                                y,
-                                1,
-                                tolerance)
-                        except Exception:
-                            return [x, y]
-                    return [x,y]
+    for y in range(bottom - 1, top, -step):
+        for x in range(left, right, step):
+            rgb = img.getpixel((x, y))
+            if darkEnough(rgb, x, y, tolerance):
+                if step > 1:
+                    try:
+                        return find_bottom_edge(img,
+                                                max(0, x - step),
+                                                max(0, y - step),
+                                                x,
+                                                y,
+                                                1,
+                                                tolerance)
+                    except Exception:
+                        return [x, y]
+                return [x, y]
 
-        if step > 1:
-            return find_bottom_edge(
-                img,
-                left,
-                top,
-                right,
-                bottom,
-                1,
-                tolerance
-            )
+    if step > 1:
+        return find_bottom_edge(
+            img,
+            left,
+            top,
+            right,
+            bottom,
+            1,
+            tolerance
+        )
 
-        raise Exception("Didn't find any non-white pixels")
+    raise Exception("Didn't find any non-white pixels")
 
+@timer(unit='s')
 def crop(filename, **options):
     step = options.get('step', 1)
     tolerance = options.get('tolerance', 0.95)
@@ -223,7 +232,7 @@ def crop(filename, **options):
             tolerance
         )
     except Exception:
-         bottomEllipse = None
+        bottomEllipse = None
     extents.add(bottomEllipse)
 
     # left edge
@@ -238,7 +247,7 @@ def crop(filename, **options):
             tolerance
         )
     except Exception:
-         leftEllipse = None
+        leftEllipse = None
     extents.add(leftEllipse)
 
     # right edge
@@ -253,7 +262,7 @@ def crop(filename, **options):
             tolerance
         )
     except Exception:
-         rightEllipse = None
+        rightEllipse = None
     extents.add(rightEllipse)
 
     coreWidth = extents.width() + 1
@@ -266,8 +275,8 @@ def crop(filename, **options):
 
     cropped = image.crop((extents.left(), extents.top(), width, height))
 
-    res = img.new("RGB", (finalWidth,finalHeight), "white")
-    res.paste(cropped, (gutterWidth,gutterHeight))
+    res = img.new("RGB", (finalWidth, finalHeight), "white")
+    res.paste(cropped, (gutterWidth, gutterHeight))
     draw = ImageDraw.Draw(res, 'RGBA')
 
     # adjust the values after the crop
@@ -318,14 +327,14 @@ def crop(filename, **options):
         radius = (finalHeight * 0.1) / 2
         # left ellipse
         if (leftEllipse is not None):
-           drawCircle(
-               draw,
-               gutterWidth,
-               leftEllipse[1] + gutterHeight,
-               radius,
-               "#ff0000",
-               1
-           )
+            drawCircle(
+                draw,
+                gutterWidth,
+                leftEllipse[1] + gutterHeight,
+                radius,
+                "#ff0000",
+                1
+            )
 
         # top ellipse
         drawCircle(
@@ -339,14 +348,14 @@ def crop(filename, **options):
 
         # right ellipse
         if (rightEllipse is not None):
-           drawCircle(
-               draw,
-               finalWidth - gutterWidth - 1,
-               rightEllipse[1] + gutterHeight,
-               radius,
-               "#0000ff",
-               1
-           )
+            drawCircle(
+                draw,
+                finalWidth - gutterWidth - 1,
+                rightEllipse[1] + gutterHeight,
+                radius,
+                "#0000ff",
+                1
+            )
 
         # bottom ellipse
         drawCircle(
@@ -357,7 +366,6 @@ def crop(filename, **options):
             '#ff00ff',
             1
         )
-
 
     if drawLines:
         lineColor = '#00ffff'
@@ -376,7 +384,7 @@ def crop(filename, **options):
                 finalHeight - gutterHeight - 1,
                 finalWidth - gutterWidth - 1,
                 finalHeight - gutterHeight - 1,
-           ), fill=lineColor, width=1)
+            ), fill=lineColor, width=1)
 
             # left line
             draw.line((
@@ -394,24 +402,24 @@ def crop(filename, **options):
                 finalHeight - gutterHeight - 1,
             ), fill=lineColor, width=1)
 
-
     return res
+
 
 def drawCircle(draw, centerX, centerY, radius, color, width):
     draw.ellipse((
-            centerX-radius,
-            centerY - radius,
-            centerX + radius,
-            centerY + radius
-        ),
+        centerX - radius,
+        centerY - radius,
+        centerX + radius,
+        centerY + radius
+    ),
         outline=color,
         width=width
     )
 
 
-croppedImg = crop('./samples/figure.jpg', tolerance=0.95, showGutters=True, drawEllipses=True, drawLines=True, step=10, fadeGutters=True)
+croppedImg = crop('./samples/figure.jpg', tolerance=0.95, drawEllipses=False, drawLines=False, step=10,
+                  fadeGutters=True)
 # plt.imshow(croppedImg)
 iio.imwrite("./samples/cropped.png", croppedImg)
-
 
 print("done")
