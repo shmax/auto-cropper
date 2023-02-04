@@ -76,13 +76,15 @@ def find_top_edge(img, left, top, right, bottom, step, tolerance):
             if darkEnough(rgb, x, y, tolerance):
                 if step > 1:
                     try:
-                        return find_top_edge(img,
-                                             max(0, x - step),
-                                             max(0, y - step),
-                                             x,
-                                             y,
-                                             1,
-                                             tolerance)
+                        return find_top_edge(
+                            img,
+                            max(0, x - step),
+                            max(0, y - step),
+                            x,
+                            y,
+                            1,
+                            tolerance
+                        )
                     except Exception:
                         return [x, y]
                 return [x, y]
@@ -108,13 +110,14 @@ def find_left_edge(img, left, top, right, bottom, step, tolerance):
             if darkEnough(rgb, x, y, tolerance):
                 if step > 1:
                     try:
-                        return find_left_edge(img,
-                                              max(0, x - step),
-                                              max(0, y - step),
-                                              x,
-                                              y,
-                                              1,
-                                              tolerance)
+                        return find_left_edge(
+                            img,
+                            max(0, x - step),
+                            max(0, y - step),
+                            x,
+                            y,
+                            1,
+                            tolerance)
                     except Exception:
                         return [x, y]
                 return [x, y]
@@ -140,13 +143,14 @@ def find_right_edge(img, left, top, right, bottom, step, tolerance):
             if darkEnough(rgb, x, y, tolerance):
                 if step > 1:
                     try:
-                        return find_right_edge(img,
-                                               max(0, x + step),
-                                               max(0, y - step),
-                                               x,
-                                               y,
-                                               1,
-                                               tolerance)
+                        return find_right_edge(
+                            img,
+                            max(0, x + step),
+                            max(0, y - step),
+                            x,
+                            y,
+                            1,
+                            tolerance)
                     except Exception:
                         return [x, y]
                 return [x, y]
@@ -172,13 +176,14 @@ def find_bottom_edge(img, left, top, right, bottom, step, tolerance):
             if darkEnough(rgb, x, y, tolerance):
                 if step > 1:
                     try:
-                        return find_bottom_edge(img,
-                                                max(0, x - step),
-                                                max(0, y - step),
-                                                x,
-                                                y,
-                                                1,
-                                                tolerance)
+                        return find_bottom_edge(
+                            img,
+                            max(0, x - step),
+                            max(0, y - step),
+                            x,
+                            y,
+                            1,
+                            tolerance)
                     except Exception:
                         return [x, y]
                 return [x, y]
