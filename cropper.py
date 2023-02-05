@@ -207,11 +207,11 @@ def find_bottom_edge(img, left, top, right, bottom, step, tolerance):
 def crop(filename, **options):
     step = options.get('step', 1)
     tolerance = options.get('tolerance', 0.95)
-    fade_gutters = options.get('fadeGutters', True)
-    draw_lines = options.get('drawLines', False)
-    draw_ellipses = options.get('drawEllipses', False)
+    fade_gutters = options.get('fade_gutters', True)
+    draw_lines = options.get('draw_lines', False)
+    draw_ellipses = options.get('draw_ellipses', False)
     gutter = options.get('gutter', 0.05)
-    fade_color = options.get('fadeColor', [255, 255, 255])
+    fade_color = options.get('fade_color', [255, 255, 255])
     image = Image.open(filename)
 
     height, width = image.height, image.width
