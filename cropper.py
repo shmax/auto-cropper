@@ -210,6 +210,7 @@ def crop(filename, **options):
     fade_gutters = options.get('fade_gutters', True)
     draw_lines = options.get('draw_lines', False)
     draw_ellipses = options.get('draw_ellipses', False)
+    ellipse_size = options.get('ellipse_size', 0.05)
     gutter = options.get('gutter', 0.05)
     fade_color = options.get('fade_color', [255, 255, 255])
     image = Image.open(filename)
@@ -323,7 +324,7 @@ def crop(filename, **options):
             ), fill=(fade_color[0], fade_color[1], fade_color[2], scalar), width=1)
 
     if draw_ellipses:
-        radius = (final_height * 0.1) / 2
+        radius = (min(final_height, final_width) * ellipse_size) / 2
         # left ellipse
         if left_ellipse is not None:
             draw_circle(
