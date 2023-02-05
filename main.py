@@ -404,7 +404,6 @@ def crop(filename, **options):
 
     return res
 
-
 def drawCircle(draw, centerX, centerY, radius, color, width):
     draw.ellipse((
         centerX - radius,
