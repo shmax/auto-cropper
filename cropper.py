@@ -1,5 +1,11 @@
 import math
-from PIL import Image as img, ImageDraw
+from PIL import Image, ImageDraw
+
+
+class EdgeNotFoundException(Exception):
+    """Raised when no edge pixel is found"""
+    pass
+
 
 class Extents:
     _left = None
@@ -27,7 +33,7 @@ class Extents:
 
     def add(self, point):
         if point is None:
-            return;
+            return
 
         if point[0] is not None:
             self._left = min(self._left, point[0])
@@ -44,7 +50,7 @@ class Extents:
         return self._right - self._left
 
 
-def imageLightnessAt(rgb):
+def image_lightness_at(rgb):
     (r, g, b) = rgb
     m = min(r, g, b)
     n = max(r, g, b)
@@ -52,11 +58,11 @@ def imageLightnessAt(rgb):
     return lightness
 
 
-def darkEnough(rgb, x, y, tolerance):
+def dark_enough(rgb, tolerance):
     if rgb[0] == 255 and rgb[1] == 255 and rgb[2] == 255:
         return False
 
-    if imageLightnessAt(rgb) < tolerance:
+    if image_lightness_at(rgb) < tolerance:
         return True
 
     return False
@@ -65,8 +71,8 @@ def darkEnough(rgb, x, y, tolerance):
 def find_top_edge(img, left, top, right, bottom, step, tolerance):
     for y in range(top, bottom, step):
         for x in range(left, right, step):
-            rgb = img.getpixel((x, y));
-            if darkEnough(rgb, x, y, tolerance):
+            rgb = img.getpixel((x, y))
+            if dark_enough(rgb, tolerance):
                 if step > 1:
                     try:
                         return find_top_edge(
@@ -78,7 +84,7 @@ def find_top_edge(img, left, top, right, bottom, step, tolerance):
                             step=1,
                             tolerance=tolerance
                         )
-                    except Exception:
+                    except EdgeNotFoundException:
                         return [x, y]
                 return [x, y]
 
@@ -93,14 +99,14 @@ def find_top_edge(img, left, top, right, bottom, step, tolerance):
             tolerance
         )
 
-    raise Exception("Didn't find any non-white pixels")
+    raise EdgeNotFoundException("Didn't find any non-white pixels")
 
 
 def find_left_edge(img, left, top, right, bottom, step, tolerance):
     for x in range(left, right, step):
         for y in range(top, bottom, step):
             rgb = img.getpixel((x, y))
-            if darkEnough(rgb, x, y, tolerance):
+            if dark_enough(rgb, tolerance):
                 if step > 1:
                     try:
                         return find_left_edge(
@@ -112,7 +118,7 @@ def find_left_edge(img, left, top, right, bottom, step, tolerance):
                             step=1,
                             tolerance=tolerance
                         )
-                    except Exception:
+                    except EdgeNotFoundException:
                         return [x, y]
                 return [x, y]
 
@@ -127,14 +133,14 @@ def find_left_edge(img, left, top, right, bottom, step, tolerance):
             tolerance
         )
 
-    raise Exception("Didn't find any non-white pixels")
+    raise EdgeNotFoundException("Didn't find any non-white pixels")
 
 
 def find_right_edge(img, left, top, right, bottom, step, tolerance):
     for x in range(right - 1, left, -step):
         for y in range(top, bottom, step):
             rgb = img.getpixel((x, y))
-            if darkEnough(rgb, x, y, tolerance):
+            if dark_enough(rgb, tolerance):
                 if step > 1:
                     try:
                         return find_right_edge(
@@ -146,7 +152,7 @@ def find_right_edge(img, left, top, right, bottom, step, tolerance):
                             step=1,
                             tolerance=tolerance
                         )
-                    except Exception:
+                    except EdgeNotFoundException:
                         return [x, y]
                 return [x, y]
 
@@ -161,14 +167,14 @@ def find_right_edge(img, left, top, right, bottom, step, tolerance):
             tolerance
         )
 
-    raise Exception("Didn't find any non-white pixels")
+    raise EdgeNotFoundException("Didn't find any non-white pixels")
 
 
 def find_bottom_edge(img, left, top, right, bottom, step, tolerance):
     for y in range(bottom - 1, top, -step):
         for x in range(left, right, step):
             rgb = img.getpixel((x, y))
-            if darkEnough(rgb, x, y, tolerance):
+            if dark_enough(rgb, tolerance):
                 if step > 1:
                     try:
                         return find_bottom_edge(
@@ -180,7 +186,7 @@ def find_bottom_edge(img, left, top, right, bottom, step, tolerance):
                             step=1,
                             tolerance=tolerance
                         )
-                    except Exception:
+                    except EdgeNotFoundException:
                         return [x, y]
                 return [x, y]
 
@@ -195,24 +201,25 @@ def find_bottom_edge(img, left, top, right, bottom, step, tolerance):
             tolerance
         )
 
-    raise Exception("Didn't find any non-white pixels")
+    raise EdgeNotFoundException("Didn't find any non-white pixels")
+
 
 def crop(filename, **options):
     step = options.get('step', 1)
     tolerance = options.get('tolerance', 0.95)
-    fadeGutters = options.get('fadeGutters', True)
-    drawLines = options.get('drawLines', False)
-    drawEllipses = options.get('drawEllipses', False)
+    fade_gutters = options.get('fadeGutters', True)
+    draw_lines = options.get('drawLines', False)
+    draw_ellipses = options.get('drawEllipses', False)
     gutter = options.get('gutter', 0.05)
-    fadeColor = options.get('fadeColor', [255,255,255]);
-    image = img.open(filename)
+    fade_color = options.get('fadeColor', [255, 255, 255])
+    image = Image.open(filename)
 
     height, width = image.height, image.width
 
     extents = Extents(width, height)
 
     # discover top edge
-    topEllipse = find_top_edge(
+    top_ellipse = find_top_edge(
         image,
         left=0,
         top=0,
@@ -221,10 +228,10 @@ def crop(filename, **options):
         step=step,
         tolerance=tolerance
     )
-    extents.add([None, topEllipse[1]])
+    extents.add([None, top_ellipse[1]])
 
     # bottom edge
-    bottomEllipse = find_bottom_edge(
+    bottom_ellipse = find_bottom_edge(
         image,
         left=0,
         top=extents.top(),
@@ -233,10 +240,10 @@ def crop(filename, **options):
         step=step,
         tolerance=tolerance
     )
-    extents.add([None, bottomEllipse[1]])
+    extents.add([None, bottom_ellipse[1]])
 
     # left edge
-    leftEllipse = find_left_edge(
+    left_ellipse = find_left_edge(
         image,
         left=0,
         top=extents.top(),
@@ -245,10 +252,10 @@ def crop(filename, **options):
         step=step,
         tolerance=tolerance
     )
-    extents.add([leftEllipse[0], None])
+    extents.add([left_ellipse[0], None])
 
     # right edge
-    rightEllipse = find_right_edge(
+    right_ellipse = find_right_edge(
         image,
         left=extents.right(),
         top=extents.top(),
@@ -257,152 +264,153 @@ def crop(filename, **options):
         step=step,
         tolerance=tolerance
     )
-    extents.add([rightEllipse[0], None])
+    extents.add([right_ellipse[0], None])
 
-    coreWidth = extents.width() + 1
-    coreHeight = extents.height() + 1
-    gutterWidth = int(math.ceil(coreWidth * gutter))
-    gutterHeight = int(math.ceil(coreHeight * gutter))
+    core_width = extents.width() + 1
+    core_height = extents.height() + 1
+    gutter_width = int(math.ceil(core_width * gutter))
+    gutter_height = int(math.ceil(core_height * gutter))
 
-    finalWidth = int(coreWidth + gutterWidth * 2)
-    finalHeight = int(coreHeight + gutterHeight * 2)
+    final_width = int(core_width + gutter_width * 2)
+    final_height = int(core_height + gutter_height * 2)
 
     cropped = image.crop((extents.left(), extents.top(), width, height))
 
-    res = img.new("RGB", (finalWidth, finalHeight), "white")
-    res.paste(cropped, (gutterWidth, gutterHeight))
+    res = Image.new("RGB", (final_width, final_height), "white")
+    res.paste(cropped, (gutter_width, gutter_height))
     draw = ImageDraw.Draw(res, 'RGBA')
 
     # adjust the values after the crop
-    topEllipse[0] -= extents.left()
-    bottomEllipse[0] -= extents.left()
-    leftEllipse[1] -= extents.top()
-    rightEllipse[1] -= extents.top()
+    top_ellipse[0] -= extents.left()
+    bottom_ellipse[0] -= extents.left()
+    left_ellipse[1] -= extents.top()
+    right_ellipse[1] -= extents.top()
 
-    if fadeGutters:
-        slope = gutterHeight / gutterWidth
+    if fade_gutters:
+        slope = gutter_height / gutter_width
         # fade out the top and bottom gutters
-        for y in range(0, gutterHeight):
-            scalar = 255 - int((y / gutterHeight) * 255)
-            localBottom = finalHeight - y
+        for y in range(0, gutter_height):
+            scalar = 255 - int((y / gutter_height) * 255)
+            local_bottom = final_height - y
             draw.line((
                 y / slope,
                 y,
-                finalWidth - y / slope,
+                final_width - y / slope,
                 y,
-            ), fill=(fadeColor[0], fadeColor[1], fadeColor[2], scalar), width=1)
+            ), fill=(fade_color[0], fade_color[1], fade_color[2], scalar), width=1)
             draw.line((
                 y / slope,
-                localBottom,
-                finalWidth - y / slope,
-                localBottom,
-            ), fill=(fadeColor[0], fadeColor[1], fadeColor[2], scalar), width=1)
+                local_bottom,
+                final_width - y / slope,
+                local_bottom,
+            ), fill=(fade_color[0], fade_color[1], fade_color[2], scalar), width=1)
 
         # fade out the left and right gutters
-        for x in range(0, gutterWidth):
-            scalar = 255 - int((x / gutterWidth) * 255)
-            localRight = finalWidth - x
+        for x in range(0, gutter_width):
+            scalar = 255 - int((x / gutter_width) * 255)
+            local_right = final_width - x
             draw.line((
                 x,
                 x * slope,
                 x,
-                finalHeight - x * slope,
-            ), fill=(fadeColor[0], fadeColor[1], fadeColor[2], scalar), width=1)
+                final_height - x * slope,
+            ), fill=(fade_color[0], fade_color[1], fade_color[2], scalar), width=1)
             draw.line((
-                localRight,
+                local_right,
                 x * slope,
-                localRight,
-                finalHeight - x * slope,
-            ), fill=(fadeColor[0], fadeColor[1], fadeColor[2], scalar), width=1)
+                local_right,
+                final_height - x * slope,
+            ), fill=(fade_color[0], fade_color[1], fade_color[2], scalar), width=1)
 
-    if drawEllipses:
-        radius = (finalHeight * 0.1) / 2
+    if draw_ellipses:
+        radius = (final_height * 0.1) / 2
         # left ellipse
-        if (leftEllipse is not None):
-            drawCircle(
+        if left_ellipse is not None:
+            draw_circle(
                 draw,
-                gutterWidth,
-                leftEllipse[1] + gutterHeight,
+                gutter_width,
+                left_ellipse[1] + gutter_height,
                 radius,
                 "#ff0000",
                 1
             )
 
         # top ellipse
-        drawCircle(
+        draw_circle(
             draw,
-            topEllipse[0] + gutterWidth,
-            gutterHeight,
+            top_ellipse[0] + gutter_width,
+            gutter_height,
             radius,
             '#00ff00',
             1
         )
 
         # right ellipse
-        if (rightEllipse is not None):
-            drawCircle(
+        if right_ellipse is not None:
+            draw_circle(
                 draw,
-                finalWidth - gutterWidth - 1,
-                rightEllipse[1] + gutterHeight,
+                final_width - gutter_width - 1,
+                right_ellipse[1] + gutter_height,
                 radius,
                 "#0000ff",
                 1
             )
 
         # bottom ellipse
-        drawCircle(
+        draw_circle(
             draw,
-            bottomEllipse[0] + gutterWidth,
-            finalHeight - gutterHeight - 1,
+            bottom_ellipse[0] + gutter_width,
+            final_height - gutter_height - 1,
             radius,
             '#ff00ff',
             1
 
         )
 
-    if drawLines:
-        lineColor = (0,255,255,32)
-        for y in range(0, gutterHeight):
+    if draw_lines:
+        line_color = (0, 255, 255, 32)
+        for y in range(0, gutter_height):
             # top line
             draw.line((
-                gutterWidth,
-                gutterHeight,
-                finalWidth - gutterWidth - 1,
-                gutterHeight,
-            ), fill=lineColor, width=1)
+                gutter_width,
+                gutter_height,
+                final_width - gutter_width - 1,
+                gutter_height,
+            ), fill=line_color, width=1)
 
             # bottom line
             draw.line((
-                gutterWidth,
-                finalHeight - gutterHeight - 1,
-                finalWidth - gutterWidth - 1,
-                finalHeight - gutterHeight - 1,
-            ), fill=lineColor, width=1)
+                gutter_width,
+                final_height - gutter_height - 1,
+                final_width - gutter_width - 1,
+                final_height - gutter_height - 1,
+            ), fill=line_color, width=1)
 
             # left line
             draw.line((
-                gutterWidth,
-                gutterHeight,
-                gutterWidth,
-                finalHeight - gutterHeight - 1,
-            ), fill=lineColor, width=1)
+                gutter_width,
+                gutter_height,
+                gutter_width,
+                final_height - gutter_height - 1,
+            ), fill=line_color, width=1)
 
             # right line
             draw.line((
-                gutterWidth + coreWidth - 1,
-                gutterHeight,
-                gutterWidth + coreWidth - 1,
-                finalHeight - gutterHeight - 1,
-            ), fill=lineColor, width=1)
+                gutter_width + core_width - 1,
+                gutter_height,
+                gutter_width + core_width - 1,
+                final_height - gutter_height - 1,
+            ), fill=line_color, width=1)
 
     return res
 
-def drawCircle(draw, centerX, centerY, radius, color, width):
+
+def draw_circle(draw, center_x, center_y, radius, color, width):
     draw.ellipse((
-        centerX - radius,
-        centerY - radius,
-        centerX + radius,
-        centerY + radius
+        center_x - radius,
+        center_y - radius,
+        center_x + radius,
+        center_y + radius
     ),
         outline=color,
         width=width
