@@ -1,12 +1,5 @@
-import numpy as np
-import imageio.v3 as iio
 import math
-import logging
 from PIL import Image as img, ImageDraw
-from timer import timer, get_timer
-
-
-# logging.basicConfig(level=logging.DEBUG)
 
 class Extents:
     _left = None
@@ -204,7 +197,6 @@ def find_bottom_edge(img, left, top, right, bottom, step, tolerance):
 
     raise Exception("Didn't find any non-white pixels")
 
-@timer(unit='s')
 def crop(filename, **options):
     step = options.get('step', 1)
     tolerance = options.get('tolerance', 0.95)
@@ -414,18 +406,3 @@ def drawCircle(draw, centerX, centerY, radius, color, width):
         outline=color,
         width=width
     )
-
-
-croppedImg = crop(
-    './samples/figure.jpg',
-    tolerance=0.95,
-    drawEllipses=True,
-    drawLines=True,
-    step=10,
-    fadeGutters=True,
-    fadeColor=[0,255,255]
-)
-# plt.imshow(croppedImg)
-iio.imwrite("./samples/cropped.png", croppedImg)
-
-print("done")
