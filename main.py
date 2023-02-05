@@ -6,7 +6,7 @@ from PIL import Image as img, ImageDraw
 from timer import timer, get_timer
 
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 class Extents:
     _left = None
@@ -78,12 +78,12 @@ def find_top_edge(img, left, top, right, bottom, step, tolerance):
                     try:
                         return find_top_edge(
                             img,
-                            max(0, x - step),
-                            max(0, y - step),
-                            x,
-                            y,
-                            1,
-                            tolerance
+                            left=max(left, x - step),
+                            top=max(top, y - step),
+                            right=x,
+                            bottom=y,
+                            step=1,
+                            tolerance=tolerance
                         )
                     except Exception:
                         return [x, y]
@@ -112,12 +112,13 @@ def find_left_edge(img, left, top, right, bottom, step, tolerance):
                     try:
                         return find_left_edge(
                             img,
-                            max(0, x - step),
-                            max(0, y - step),
-                            x,
-                            y,
-                            1,
-                            tolerance)
+                            left=max(left, x - step),
+                            top=max(top, y - step),
+                            right=x,
+                            bottom=y,
+                            step=1,
+                            tolerance=tolerance
+                        )
                     except Exception:
                         return [x, y]
                 return [x, y]
@@ -145,12 +146,13 @@ def find_right_edge(img, left, top, right, bottom, step, tolerance):
                     try:
                         return find_right_edge(
                             img,
-                            max(0, x + step),
-                            max(0, y - step),
-                            x,
-                            y,
-                            1,
-                            tolerance)
+                            left=left,
+                            top=max(top, y - step),
+                            right=min(x + step, right),
+                            bottom=bottom,
+                            step=1,
+                            tolerance=tolerance
+                        )
                     except Exception:
                         return [x, y]
                 return [x, y]
@@ -178,12 +180,13 @@ def find_bottom_edge(img, left, top, right, bottom, step, tolerance):
                     try:
                         return find_bottom_edge(
                             img,
-                            max(0, x - step),
-                            max(0, y - step),
-                            x,
-                            y,
-                            1,
-                            tolerance)
+                            left=max(left, x - step),
+                            top=top,
+                            right=x,
+                            bottom=min(y + step, bottom),
+                            step=1,
+                            tolerance=tolerance
+                        )
                     except Exception:
                         return [x, y]
                 return [x, y]
@@ -208,6 +211,7 @@ def crop(filename, **options):
     fadeGutters = options.get('fadeGutters', True)
     drawLines = options.get('drawLines', False)
     drawEllipses = options.get('drawEllipses', False)
+    fadeColor = options.get('fadeColor', [255,255,255]);
     image = img.open(filename)
 
     height, width = image.height, image.width
@@ -217,58 +221,50 @@ def crop(filename, **options):
     # discover top edge
     topEllipse = find_top_edge(
         image,
-        0,
-        0,
-        width,
-        height,
-        step,
-        tolerance)
-    extents.add(topEllipse);
+        left=0,
+        top=0,
+        right=width,
+        bottom=height,
+        step=step,
+        tolerance=tolerance
+    )
+    extents.add([None, topEllipse[1]])
 
     # bottom edge
-    try:
-        bottomEllipse = find_bottom_edge(
-            image,
-            0,
-            extents.top(),
-            width,
-            height,
-            step,
-            tolerance
-        )
-    except Exception:
-        bottomEllipse = None
-    extents.add(bottomEllipse)
+    bottomEllipse = find_bottom_edge(
+        image,
+        left=0,
+        top=extents.top(),
+        right=width,
+        bottom=height,
+        step=step,
+        tolerance=tolerance
+    )
+    extents.add([None, bottomEllipse[1]])
 
     # left edge
-    try:
-        leftEllipse = find_left_edge(
-            image,
-            0,
-            extents.top(),
-            extents.left(),
-            extents.bottom(),
-            step,
-            tolerance
-        )
-    except Exception:
-        leftEllipse = None
-    extents.add(leftEllipse)
+    leftEllipse = find_left_edge(
+        image,
+        left=0,
+        top=extents.top(),
+        right=width,
+        bottom=extents.bottom() + 1,
+        step=step,
+        tolerance=tolerance
+    )
+    extents.add([leftEllipse[0], None])
 
     # right edge
-    try:
-        rightEllipse = find_right_edge(
-            image,
-            extents.right(),
-            extents.top(),
-            width,
-            extents.bottom() + 1,
-            step,
-            tolerance
-        )
-    except Exception:
-        rightEllipse = None
-    extents.add(rightEllipse)
+    rightEllipse = find_right_edge(
+        image,
+        left=extents.right(),
+        top=extents.top(),
+        right=width,
+        bottom=extents.bottom() + 1,
+        step=step,
+        tolerance=tolerance
+    )
+    extents.add([rightEllipse[0], None])
 
     coreWidth = extents.width() + 1
     coreHeight = extents.height() + 1
@@ -287,46 +283,44 @@ def crop(filename, **options):
     # adjust the values after the crop
     topEllipse[0] -= extents.left()
     bottomEllipse[0] -= extents.left()
-    if leftEllipse is not None:
-        leftEllipse[1] -= extents.top()
-
-    if rightEllipse is not None and rightEllipse[1] is not None:
-        rightEllipse[1] -= extents.top()
+    leftEllipse[1] -= extents.top()
+    rightEllipse[1] -= extents.top()
 
     if fadeGutters:
+        slope = gutterHeight / gutterWidth
         # fade out the top and bottom gutters
         for y in range(0, gutterHeight):
             scalar = 255 - int((y / gutterHeight) * 255)
             localBottom = finalHeight - y
             draw.line((
+                y / slope,
                 y,
+                finalWidth - y / slope,
                 y,
-                finalWidth - y,
-                y,
-            ), fill=(255, 0, 255, scalar), width=1)
+            ), fill=(fadeColor[0], fadeColor[1], fadeColor[2], scalar), width=1)
             draw.line((
-                y,
+                y / slope,
                 localBottom,
-                finalWidth - y,
+                finalWidth - y / slope,
                 localBottom,
-            ), fill=(255, 0, 255, scalar), width=1)
+            ), fill=(fadeColor[0], fadeColor[1], fadeColor[2], scalar), width=1)
 
-        # fade out the top and bottom gutters
+        # fade out the left and right gutters
         for x in range(0, gutterWidth):
             scalar = 255 - int((x / gutterWidth) * 255)
             localRight = finalWidth - x
             draw.line((
                 x,
+                x * slope,
                 x,
-                x,
-                finalHeight - x,
-            ), fill=(0, 255, 255, scalar), width=1)
+                finalHeight - x * slope,
+            ), fill=(fadeColor[0], fadeColor[1], fadeColor[2], scalar), width=1)
             draw.line((
                 localRight,
-                x,
+                x * slope,
                 localRight,
-                finalHeight - x,
-            ), fill=(0, 255, 255, scalar), width=1)
+                finalHeight - x * slope,
+            ), fill=(fadeColor[0], fadeColor[1], fadeColor[2], scalar), width=1)
 
     if drawEllipses:
         radius = (finalHeight * 0.1) / 2
@@ -370,10 +364,11 @@ def crop(filename, **options):
             radius,
             '#ff00ff',
             1
+
         )
 
     if drawLines:
-        lineColor = '#00ffff'
+        lineColor = (0,255,255,32)
         for y in range(0, gutterHeight):
             # top line
             draw.line((
@@ -422,8 +417,15 @@ def drawCircle(draw, centerX, centerY, radius, color, width):
     )
 
 
-croppedImg = crop('./samples/figure.jpg', tolerance=0.95, drawEllipses=False, drawLines=False, step=10,
-                  fadeGutters=True)
+croppedImg = crop(
+    './samples/figure.jpg',
+    tolerance=0.95,
+    drawEllipses=True,
+    drawLines=True,
+    step=10,
+    fadeGutters=True,
+    fadeColor=[0,255,255]
+)
 # plt.imshow(croppedImg)
 iio.imwrite("./samples/cropped.png", croppedImg)
 
