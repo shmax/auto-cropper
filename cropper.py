@@ -203,6 +203,7 @@ def crop(filename, **options):
     fadeGutters = options.get('fadeGutters', True)
     drawLines = options.get('drawLines', False)
     drawEllipses = options.get('drawEllipses', False)
+    gutter = options.get('gutter', 0.05)
     fadeColor = options.get('fadeColor', [255,255,255]);
     image = img.open(filename)
 
@@ -260,8 +261,8 @@ def crop(filename, **options):
 
     coreWidth = extents.width() + 1
     coreHeight = extents.height() + 1
-    gutterWidth = int(math.ceil(coreWidth * 0.05))
-    gutterHeight = int(math.ceil(coreHeight * 0.05))
+    gutterWidth = int(math.ceil(coreWidth * gutter))
+    gutterHeight = int(math.ceil(coreHeight * gutter))
 
     finalWidth = int(coreWidth + gutterWidth * 2)
     finalHeight = int(coreHeight + gutterHeight * 2)
